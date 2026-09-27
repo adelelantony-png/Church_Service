@@ -1,23 +1,20 @@
-const CACHE_NAME = 'church-cache-v1';
-const ASSETS = [
-  '/',
-  '/index.html',
-  '/login.html',
-  '/bible.html',
-  '/bible.json',
-  '/bible_plan.json',
-  '/sheets_list.html',
-  'https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.rtl.min.css',
-  'https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css'
+const CACHE_NAME = 'church-app-v1';
+const urlsToCache = [
+  '/', '/index.html', '/login.html', '/admin_subjects.html', '/manifest.json'
 ];
 
-self.addEventListener('install', (e) => {
-  e.waitUntil(caches.open(CACHE_NAME).then((cache) => cache.addAll(ASSETS)));
+self.addEventListener('install', event => {
+  event.waitUntil(caches.open(CACHE_NAME).then(cache => cache.addAll(urlsToCache)));
 });
 
-self.addEventListener('fetch', (e) => {
-  // استرجاع البيانات من الكاش أثناء انقطاع الإنترنت
-  e.respondWith(
-    caches.match(e.request).then((res) => res || fetch(e.request))
+self.addEventListener('fetch', event => {
+  // منع تخزين أي عمليات إرسال (POST) أو طلبات السيرفر (api)
+  if (event.request.method === 'POST' || event.request.url.includes('/api/')) {
+      return; 
+  }
+  event.respondWith(
+    caches.match(event.request).then(response => {
+        return response || fetch(event.request);
+    })
   );
 });

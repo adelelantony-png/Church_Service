@@ -1,0 +1,245 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>تسجيل الدخول - خدمة إعداد الخدام</title>
+    
+    <!-- إعدادات تطبيق الويب PWA -->
+    <link rel="manifest" href="manifest.json">
+    <meta name="theme-color" content="#1e3c72">
+
+    <!-- الخطوط والتنسيقات -->
+    <link href="https://fonts.googleapis.com/css2?family=Tajawal:wght@400;500;700;800&display=swap" rel="stylesheet">
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.rtl.min.css" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    
+    <style>
+        body {
+            font-family: 'Tajawal', sans-serif;
+            background-color: #f1f5f9;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            min-height: 100vh;
+            margin: 0;
+            padding: 15px;
+        }
+        .login-card {
+            background: #ffffff;
+            border-radius: 24px;
+            box-shadow: 0 10px 25px rgba(0,0,0,0.05);
+            max-width: 420px;
+            width: 100%;
+            padding: 35px 25px;
+            border: 1px solid #e2e8f0;
+        }
+        .icon-circle {
+            width: 70px;
+            height: 70px;
+            border-radius: 50%;
+            background-color: #1e3c72;
+            color: #ffffff;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 2rem;
+            margin: 0 auto 15px;
+        }
+        .form-control {
+            border-radius: 12px;
+            padding: 12px;
+            border: 1px solid #cbd5e1;
+        }
+        .form-control:focus {
+            border-color: #1e3c72;
+            box-shadow: 0 0 0 3px rgba(30, 60, 114, 0.15);
+        }
+        .btn-submit {
+            background-color: #1e3c72;
+            border: none;
+            border-radius: 12px;
+            padding: 12px;
+            font-weight: 700;
+            transition: all 0.2s;
+        }
+        .btn-submit:hover {
+            background-color: #162c54;
+        }
+        .bday-popup {
+            background: linear-gradient(135deg, #fffbeb 0%, #fef3c7 100%);
+            border: 2px dashed #f59e0b;
+            color: #92400e;
+            border-radius: 14px;
+            padding: 12px;
+            animation: fadeIn 0.4s ease;
+        }
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(-5px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+    </style>
+</head>
+<body>
+
+<div class="login-card">
+    <div class="text-center mb-4">
+        <div class="icon-circle">
+            <i class="fa-solid fa-church"></i>
+        </div>
+        <h4 class="fw-bold text-primary mb-1">خدمة إعداد الخدام</h4>
+        <small class="text-muted">بوابة المتابعة الروحية والتعليمية</small>
+    </div>
+
+    <!-- رسائل الأخطاء -->
+    <div id="error-msg" class="alert alert-danger d-none py-2 px-3 small fw-bold text-center rounded-3 mb-3">
+        <i class="fa-solid fa-circle-exclamation me-1"></i> <span id="error-text"></span>
+    </div>
+
+    <!-- تنبيه عيد الميلاد اللحظي -->
+    <div id="bday-alert" class="bday-popup text-center small fw-bold d-none mb-3">
+        🎂🎉 كل سنة وأنت طيب وبخير! عيد ميلاد سعيد 🎈
+    </div>
+
+    <form id="login-form">
+        <div class="mb-3">
+            <label class="form-label small fw-bold text-secondary">كود المخدوم أو اسم المستخدم:</label>
+            <div class="input-group">
+                <input type="text" id="student_code" class="form-control text-center fw-bold" placeholder="أدخل كودك الشخصي" required autofocus>
+                <span class="input-group-text bg-light text-muted"><i class="fa-solid fa-key"></i></span>
+            </div>
+        </div>
+
+        <div class="mb-3">
+            <label class="form-label small fw-bold text-secondary">كلمة السر (للخادم الأدمن فقط):</label>
+            <div class="input-group">
+                <input type="password" id="password" class="form-control text-center" placeholder="تترك فارغة للمخدومين">
+                <span class="input-group-text bg-light text-muted"><i class="fa-solid fa-lock"></i></span>
+            </div>
+            <small class="text-muted d-block mt-1" style="font-size: 0.75rem;">* المخدوم يدخل بكوده مباشرة دون كتابة كلمة سر.</small>
+        </div>
+
+        <button type="submit" id="login-btn" class="btn btn-primary btn-submit w-100 text-white mt-2">
+            <i class="fa-solid fa-right-to-bracket me-1"></i> دخول إلى حسابي
+        </button>
+    </form>
+
+    <!-- فاصل وزر تحديث البرنامج ومسح الكاش أسفل تسجيل الدخول -->
+    <hr class="my-4 text-muted opacity-25">
+
+    <div class="text-center">
+        <button type="button" id="btnUpdateApp" class="btn btn-outline-secondary btn-sm rounded-pill px-3 fw-bold" onclick="refreshAppVersion()">
+            <i class="fa-solid fa-arrows-rotate me-1"></i> تحديث البرنامج ومسح الكاش
+        </button>
+        <div class="mt-2 text-muted" style="font-size: 0.72rem;">
+            اضغط هنا إذا قمت بتحديث الموقع وترغب في سحب النسخة الأخيرة فوراً.
+        </div>
+    </div>
+</div>
+
+<script>
+    // دالة تحديث البرنامج ومسح الكاش من المتصفح والـ Service Worker
+    async function refreshAppVersion() {
+        const btn = document.getElementById('btnUpdateApp');
+        const originalText = btn.innerHTML;
+        btn.innerHTML = '<i class="fa-solid fa-spinner fa-spin me-1"></i> جاري التحديث ومسح الكاش...';
+        btn.disabled = true;
+
+        try {
+            // تفريغ كاش المتصفح بالكامل
+            if ('caches' in window) {
+                const cacheNames = await caches.keys();
+                await Promise.all(cacheNames.map(name => caches.delete(name)));
+            }
+
+            // تحديث وإعادة تشغيل Service Worker إن وجد
+            if ('serviceWorker' in navigator) {
+                const registrations = await navigator.serviceWorker.getRegistrations();
+                for (let registration of registrations) {
+                    await registration.unregister();
+                }
+            }
+
+            // إعادة تحميل الصفحة بالكامل مع تجاوز الذاكرة المخبأة
+            setTimeout(() => {
+                window.location.reload(true);
+            }, 800);
+        } catch (e) {
+            window.location.reload(true);
+        }
+    }
+
+    // منطق التحقق وتسجيل الدخول
+    document.getElementById('login-form').addEventListener('submit', async function(e) {
+        e.preventDefault();
+
+        const codeInput = document.getElementById('student_code').value.trim();
+        const passInput = document.getElementById('password').value.trim();
+        const errorMsgBox = document.getElementById('error-msg');
+        const errorText = document.getElementById('error-text');
+        const bdayBox = document.getElementById('bday-alert');
+        const loginBtn = document.getElementById('login-btn');
+
+        errorMsgBox.classList.add('d-none');
+        bdayBox.classList.add('d-none');
+        loginBtn.innerHTML = '<i class="fa-solid fa-spinner fa-spin me-1"></i> جاري التحقق...';
+        loginBtn.disabled = true;
+
+        try {
+            const response = await fetch('/api/login', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ code: codeInput, password: passInput })
+            });
+
+            const result = await response.json();
+
+            if (!response.ok || !result.success) {
+                throw new Error(result.message || 'بيانات الدخول غير صحيحة');
+            }
+
+            // تخزين بيانات الجلسة في المتصفح
+            localStorage.setItem('user_role', result.role);
+            localStorage.setItem('student_code', result.data.code);
+            localStorage.setItem('student_name', result.data.name);
+            localStorage.setItem('student_level', result.data.level || 'الفرقة الأولى');
+            localStorage.setItem('student_birthdate', result.data.birthdate || '');
+            localStorage.setItem('student_points', result.data.points || 0);
+
+            // فحص تاريخ الميلاد لحظياً
+            let isBirthdayToday = false;
+            if (result.data.birthdate) {
+                const parts = result.data.birthdate.split(/[-/]/);
+                let bMonth, bDay;
+                if (parts[0].length === 4) { // YYYY-MM-DD
+                    bMonth = parseInt(parts[1], 10);
+                    bDay = parseInt(parts[2], 10);
+                } else { // DD-MM-YYYY
+                    bDay = parseInt(parts[0], 10);
+                    bMonth = parseInt(parts[1], 10);
+                }
+
+                const today = new Date();
+                if (bMonth === (today.getMonth() + 1) && bDay === today.getDate()) {
+                    isBirthdayToday = true;
+                    bdayBox.classList.remove('d-none');
+                }
+            }
+
+            // التوجيه للصفحة المستهدفة
+            const redirectUrl = (result.role === 'admin') ? 'admin_subjects.html' : 'index.html';
+            setTimeout(() => {
+                window.location.href = redirectUrl;
+            }, isBirthdayToday ? 1500 : 300);
+
+        } catch (err) {
+            errorText.textContent = err.message || 'تعذر التحقق من الكود';
+            errorMsgBox.classList.remove('d-none');
+            loginBtn.innerHTML = '<i class="fa-solid fa-right-to-bracket me-1"></i> دخول إلى حسابي';
+            loginBtn.disabled = false;
+        }
+    });
+</script>
+<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
+</body>
+</html>

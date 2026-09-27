@@ -1,0 +1,694 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>لوحة الإدارة - متابعة الأداء والخدمة</title>
+    <link href="https://fonts.googleapis.com/css2?family=Tajawal:wght@400;500;700;800&display=swap" rel="stylesheet">
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.rtl.min.css" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <script src="https://cdn.sheetjs.com/xlsx-latest/package/dist/xlsx.full.min.js"></script>
+    <style>
+        body { font-family: 'Tajawal', sans-serif; background-color: #f1f5f9; color: #1e293b; }
+        .card-custom { border-radius: 18px; border: none; box-shadow: 0 4px 15px rgba(0,0,0,0.04); }
+        .nav-tabs .nav-link { font-weight: 700; color: #64748b; border: none; border-bottom: 3px solid transparent; }
+        .nav-tabs .nav-link.active { color: #1e3c72; border-bottom: 3px solid #1e3c72; background: transparent; }
+        .stat-card {
+            border-radius: 16px;
+            padding: 20px;
+            background: #ffffff;
+            border: 1px solid #e2e8f0;
+            transition: transform 0.2s ease;
+        }
+        .stat-card:hover { transform: translateY(-3px); }
+        .progress-thin { height: 8px; border-radius: 10px; }
+    </style>
+</head>
+<body>
+
+<div class="container py-4" style="max-width: 1100px;">
+
+    <!-- الشريط العلوي -->
+    <div class="d-flex justify-content-between align-items-center mb-4 bg-white p-3 rounded-4 shadow-sm">
+        <div>
+            <h4 class="fw-bold mb-1 text-primary"><i class="fa-solid fa-screwdriver-wrench me-2"></i>لوحة تحكم الخادم المسؤول</h4>
+            <small class="text-muted">إدارة المخدومين، الشيتات، والمتابعة الروحية</small>
+        </div>
+        <div>
+            <a href="index.html" class="btn btn-outline-primary btn-sm fw-bold me-1"><i class="fa-solid fa-home me-1"></i> الرئيسية</a>
+            <a href="logout.html" class="btn btn-outline-danger btn-sm fw-bold"><i class="fa-solid fa-power-off me-1"></i> خروج</a>
+        </div>
+    </div>
+
+    <!-- صندوق التنبيهات والرسائل -->
+    <div id="sys-msg" class="alert d-none fw-bold text-center" role="alert"></div>
+
+    <!-- التبويبات -->
+    <ul class="nav nav-tabs mb-4 bg-white p-2 rounded-4 shadow-sm" id="adminTabs" role="tablist">
+        <li class="nav-item">
+            <button class="nav-link active" data-bs-toggle="tab" data-bs-target="#studentsTab">
+                <i class="fa-solid fa-users me-1"></i> تسجيل المخدومين
+            </button>
+        </li>
+        <li class="nav-item">
+            <button class="nav-link" data-bs-toggle="tab" data-bs-target="#trackingTab" onclick="loadAllStudents()">
+                <i class="fa-solid fa-chart-line text-success me-1"></i> متابعة إنجاز المخدومين
+            </button>
+        </li>
+        <li class="nav-item">
+            <button class="nav-link" data-bs-toggle="tab" data-bs-target="#usageTab" onclick="loadUsageStats()">
+                <i class="fa-solid fa-server text-warning me-1"></i> معدل الاستهلاك والموارد
+            </button>
+        </li>
+        <li class="nav-item">
+            <button class="nav-link" data-bs-toggle="tab" data-bs-target="#subjectsTab">
+                <i class="fa-solid fa-book-bookmark me-1"></i> إضافة المقررات
+            </button>
+        </li>
+        <li class="nav-item">
+            <button class="nav-link" data-bs-toggle="tab" data-bs-target="#settingsTab">
+                <i class="fa-solid fa-calendar-days text-primary me-1"></i> مواعيد الخدمة
+            </button>
+        </li>
+    </ul>
+
+    <div class="tab-content">
+        
+        <!-- تبويب 1: تسجيل المخدومين -->
+        <div class="tab-pane fade show active" id="studentsTab">
+            <div class="row g-4">
+                <!-- إضافة يدوي -->
+                <div class="col-lg-6">
+                    <div class="card card-custom p-4 bg-white h-100">
+                        <h5 class="fw-bold text-primary mb-3"><i class="fa-solid fa-user-plus me-2"></i>إضافة مخدوم يدوياً</h5>
+                        <p class="text-muted small">لن يقبل السيرفر حفظ مخدوم جديد إذا كان الكود مستخدماً من قبل.</p>
+                        
+                        <form id="single-student-form">
+                            <div class="mb-3">
+                                <label class="form-label small fw-bold">الاسم الرباعي:</label>
+                                <input type="text" id="std_name" class="form-control" placeholder="اسم المخدوم" required>
+                            </div>
+                            <div class="mb-3">
+                                <label class="form-label small fw-bold">الكود الشخصي (غير قابل للتكرار):</label>
+                                <input type="text" id="std_code" class="form-control" placeholder="مثال: 1001" required>
+                            </div>
+                            <div class="mb-3">
+                                <label class="form-label small fw-bold">تاريخ الميلاد:</label>
+                                <input type="date" id="std_birthdate" class="form-control">
+                            </div>
+                            <div class="mb-4">
+                                <label class="form-label small fw-bold">الفرقة الدراسية:</label>
+                                <select id="std_level" class="form-select">
+                                    <option value="الفرقة الأولى">الفرقة الأولى</option>
+                                    <option value="الفرقة الثانية">الفرقة الثانية</option>
+                                    <option value="الفرقة الثالثة">الفرقة الثالثة</option>
+                                    <option value="الفرقة الرابعة">الفرقة الرابعة</option>
+                                </select>
+                            </div>
+                            <button type="submit" id="btn-add-std" class="btn btn-primary w-100 fw-bold py-2">
+                                <i class="fa-solid fa-floppy-disk me-1"></i> حفظ بيانات المخدوم
+                            </button>
+                        </form>
+                    </div>
+                </div>
+
+                <!-- استيراد إكسيل القياسي -->
+                <div class="col-lg-6">
+                    <div class="card card-custom p-4 bg-white h-100">
+                        <div class="d-flex justify-content-between align-items-center mb-2">
+                            <h5 class="fw-bold text-success mb-0"><i class="fa-solid fa-file-excel me-2"></i>استيراد إكسيل</h5>
+                            <button onclick="downloadStandardTemplate()" class="btn btn-sm btn-outline-success fw-bold">
+                                <i class="fa-solid fa-download me-1"></i> تحميل الشيت القياسي
+                            </button>
+                        </div>
+                        <p class="text-muted small">قم بتحميل القالب القياسي، واملأ بيانات المخدومين، ثم ارفعه هنا مرة واحدة.</p>
+
+                        <form id="import-form" class="bg-light p-3 rounded-4 border">
+                            <div class="mb-3">
+                                <label class="form-label small fw-bold">الفرقة المستهدفة:</label>
+                                <select id="import_level" class="form-select" required>
+                                    <option value="الفرقة الأولى">الفرقة الأولى</option>
+                                    <option value="الفرقة الثانية">الفرقة الثانية</option>
+                                    <option value="الفرقة الثالثة">الفرقة الثالثة</option>
+                                    <option value="الفرقة الرابعة">الفرقة الرابعة</option>
+                                </select>
+                            </div>
+                            <div class="mb-3">
+                                <label class="form-label small fw-bold">ملف الإكسيل:</label>
+                                <input type="file" id="excel_file" class="form-control" accept=".xlsx, .xls, .csv" required>
+                            </div>
+                            <button type="submit" id="btn-import" class="btn btn-success w-100 fw-bold py-2 mt-2">
+                                <i class="fa-solid fa-cloud-arrow-up me-1"></i> فحص وإدخال الملف
+                            </button>
+                        </form>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- تبويب 2: متابعة إنجاز المخدومين تفصيلياً -->
+        <div class="tab-pane fade" id="trackingTab">
+            <div class="card card-custom p-4 bg-white">
+                <div class="d-flex justify-content-between align-items-center mb-3">
+                    <h5 class="fw-bold text-primary mb-0"><i class="fa-solid fa-users-viewfinder me-2"></i>قائمة المخدومين ومتابعة النشاط</h5>
+                    <button class="btn btn-sm btn-outline-primary fw-bold" onclick="loadAllStudents()">
+                        <i class="fa-solid fa-rotate-right me-1"></i> تحديث القائمة
+                    </button>
+                </div>
+
+                <div class="table-responsive">
+                    <table class="table table-hover align-middle">
+                        <thead class="table-light">
+                            <tr>
+                                <th>الكود</th>
+                                <th>الاسم</th>
+                                <th>الفرقة</th>
+                                <th>تاريخ الميلاد</th>
+                                <th>نقاط التفاعل</th>
+                                <th class="text-center">إجراءات</th>
+                            </tr>
+                        </thead>
+                        <tbody id="studentsTableBody">
+                            <tr><td colspan="6" class="text-center text-muted">اضغط على زر التحديث لجلب القائمة...</td></tr>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+
+        <!-- تبويب 3: معدل الاستهلاك والموارد (Dashboard) -->
+        <div class="tab-pane fade" id="usageTab">
+            <div class="card card-custom p-4 bg-white">
+                <div class="d-flex justify-content-between align-items-center mb-4">
+                    <div>
+                        <h5 class="fw-bold text-dark mb-1"><i class="fa-solid fa-gauge-high text-warning me-2"></i>لوحة مراقبة استهلاك الموارد</h5>
+                        <small class="text-muted">متابعة حصص الاستخدام المتبقية في باقتي Firebase و Vercel المجانية</small>
+                    </div>
+                    <button class="btn btn-sm btn-outline-primary fw-bold" onclick="loadUsageStats()">
+                        <i class="fa-solid fa-rotate-right me-1"></i> فحص فوري
+                    </button>
+                </div>
+
+                <!-- بطاقات إحصائيات البيانات الفعلية -->
+                <div class="row g-3 mb-4">
+                    <div class="col-md-3 col-6">
+                        <div class="stat-card border-primary border-opacity-25 bg-light">
+                            <small class="text-muted fw-bold d-block mb-1">المخدومين المسجلين</small>
+                            <h3 class="fw-bold text-primary mb-0" id="stat-students">0</h3>
+                        </div>
+                    </div>
+                    <div class="col-md-3 col-6">
+                        <div class="stat-card border-success border-opacity-25 bg-light">
+                            <small class="text-muted fw-bold d-block mb-1">المقررات المنشورة</small>
+                            <h3 class="fw-bold text-success mb-0" id="stat-subjects">0</h3>
+                        </div>
+                    </div>
+                    <div class="col-md-3 col-6">
+                        <div class="stat-card border-info border-opacity-25 bg-light">
+                            <small class="text-muted fw-bold d-block mb-1">تسجيلات قراءة الإنجيل</small>
+                            <h3 class="fw-bold text-info mb-0" id="stat-readings">0</h3>
+                        </div>
+                    </div>
+                    <div class="col-md-3 col-6">
+                        <div class="stat-card border-danger border-opacity-25 bg-light">
+                            <small class="text-muted fw-bold d-block mb-1">سجلات النوتة الروحية</small>
+                            <h3 class="fw-bold text-danger mb-0" id="stat-notes">0</h3>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- مقاييس الحصص المجانية (Quotas) -->
+                <div class="row g-4 mb-4">
+                    <!-- كارت استهلاك فايربيز -->
+                    <div class="col-lg-6">
+                        <div class="border rounded-4 p-4 h-100 bg-light bg-opacity-50">
+                            <div class="d-flex justify-content-between align-items-center mb-3">
+                                <h6 class="fw-bold text-dark mb-0"><i class="fa-solid fa-fire text-danger me-1"></i> استهلاك قاعدة بيانات Firebase</h6>
+                                <span class="badge bg-success-subtle text-success">خطة مجانية Spark</span>
+                            </div>
+
+                            <div class="mb-3">
+                                <div class="d-flex justify-content-between small fw-bold mb-1">
+                                    <span>إجمالي الوثائق المحفوظة:</span>
+                                    <span id="stat-total-docs">0 وثيقة</span>
+                                </div>
+                                <div class="progress progress-thin">
+                                    <div class="progress-bar bg-primary" id="bar-docs" style="width: 1%"></div>
+                                </div>
+                            </div>
+
+                            <div class="mb-3">
+                                <div class="d-flex justify-content-between small fw-bold mb-1">
+                                    <span>المساحة التخزينية التقديرية:</span>
+                                    <span id="stat-storage">0 KB من أصل 1024 MB</span>
+                                </div>
+                                <div class="progress progress-thin">
+                                    <div class="progress-bar bg-success" style="width: 1%"></div>
+                                </div>
+                            </div>
+
+                            <div class="p-3 bg-white rounded-3 border small text-muted">
+                                <strong>الحدود المجانية اليومية:</strong>
+                                <ul class="mb-0 ps-3 mt-1">
+                                    <li>القراءة: 50,000 استعلام / يوم (يستهلك الموقع منها أقل من 1%).</li>
+                                    <li>الكتابة: 20,000 عملية / يوم.</li>
+                                </ul>
+                            </div>
+                            <div class="mt-3 text-end">
+                                <a href="https://console.firebase.google.com/" target="_blank" class="btn btn-sm btn-outline-danger fw-bold">
+                                    <i class="fa-solid fa-arrow-up-right-from-square me-1"></i> فتح كونسول Firebase الحقيقي
+                                </a>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- كارت استهلاك فيرسيل -->
+                    <div class="col-lg-6">
+                        <div class="border rounded-4 p-4 h-100 bg-light bg-opacity-50">
+                            <div class="d-flex justify-content-between align-items-center mb-3">
+                                <h6 class="fw-bold text-dark mb-0"><i class="fa-solid fa-cloud text-dark me-1"></i> استهلاك خوادم استضافة Vercel</h6>
+                                <span class="badge bg-primary-subtle text-primary">خطة مجانية Hobby</span>
+                            </div>
+
+                            <div class="mb-3">
+                                <div class="d-flex justify-content-between small fw-bold mb-1">
+                                    <span>استهلاك نقل البيانات (Bandwidth):</span>
+                                    <span>أقل من 0.5 GB من أصل 100 GB</span>
+                                </div>
+                                <div class="progress progress-thin">
+                                    <div class="progress-bar bg-info" style="width: 2%"></div>
+                                </div>
+                            </div>
+
+                            <div class="mb-3">
+                                <div class="d-flex justify-content-between small fw-bold mb-1">
+                                    <span>استدعاء دوال السيرفر (Serverless Functions):</span>
+                                    <span>سلس جداً (متاح 1,000,000 استدعاء/شهر)</span>
+                                </div>
+                                <div class="progress progress-thin">
+                                    <div class="progress-bar bg-success" style="width: 2%"></div>
+                                </div>
+                            </div>
+
+                            <div class="p-3 bg-white rounded-3 border small text-muted">
+                                <strong>الأداء:</strong>
+                                <ul class="mb-0 ps-3 mt-1">
+                                    <li>ملف الكتاب المقدس يتم قراءته محلياً أوفلاين دون استهلاك السيرفر.</li>
+                                    <li>شهادات الأمان SSL مجانية ومحدثة تلقائياً بنسبة 100%.</li>
+                                </ul>
+                            </div>
+                            <div class="mt-3 text-end">
+                                <a href="https://vercel.com/dashboard/usage" target="_blank" class="btn btn-sm btn-outline-dark fw-bold">
+                                    <i class="fa-solid fa-arrow-up-right-from-square me-1"></i> تفاصيل استهلاك Vercel
+                                </a>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+            </div>
+        </div>
+
+        <!-- تبويب 4: إضافة المقررات -->
+        <div class="tab-pane fade" id="subjectsTab">
+            <div class="card card-custom p-4 bg-white">
+                <h5 class="fw-bold mb-3 text-secondary"><i class="fa-solid fa-plus-circle me-1"></i> إضافة مقرر وشيت لفرقة دراسية</h5>
+                <form id="subject-form">
+                    <div class="row g-3">
+                        <div class="col-md-4">
+                            <label class="form-label small fw-bold">الفرقة المستهدفة:</label>
+                            <select id="sub_level" class="form-select" required>
+                                <option value="الفرقة الأولى">الفرقة الأولى</option>
+                                <option value="الفرقة الثانية">الفرقة الثانية</option>
+                                <option value="الفرقة الثالثة">الفرقة الثالثة</option>
+                                <option value="الفرقة الرابعة">الفرقة الرابعة</option>
+                            </select>
+                        </div>
+                        <div class="col-md-4">
+                            <label class="form-label small fw-bold">اسم المادة:</label>
+                            <input type="text" id="sub_title" class="form-control" placeholder="مثال: طقس الكنيسة" required>
+                        </div>
+                        <div class="col-md-4">
+                            <label class="form-label small fw-bold">رابط تحميل الشيت (Google Drive):</label>
+                            <input type="text" id="sub_sheet" class="form-control" placeholder="https://drive.google.com/..." required>
+                        </div>
+                        <div class="col-md-8">
+                            <label class="form-label small fw-bold">رابط الملخص الإضافي (اختياري):</label>
+                            <input type="url" id="sub_attach" class="form-control" placeholder="https://drive.google.com/...">
+                        </div>
+                        <div class="col-md-4 d-flex align-items-end">
+                            <button type="submit" id="btn-add-sub" class="btn btn-primary w-100 py-2 fw-bold">
+                                <i class="fa-solid fa-floppy-disk me-1"></i> حفظ المادة
+                            </button>
+                        </div>
+                    </div>
+                </form>
+            </div>
+        </div>
+
+        <!-- تبويب 5: ضبط مواعيد الخدمة -->
+        <div class="tab-pane fade" id="settingsTab">
+            <div class="card card-custom p-4 bg-white">
+                <h5 class="fw-bold mb-3 text-primary"><i class="fa-solid fa-calendar-alt me-2"></i>تحديد مواعيد السنة الخدمية</h5>
+                <form id="settings-form" class="bg-light p-4 rounded-4 border">
+                    <div class="row g-3">
+                        <div class="col-md-4">
+                            <label class="form-label small fw-bold">اسم دورة الخدمة:</label>
+                            <input type="text" id="set_name" class="form-control" value="سنة إعداد الخدام" required>
+                        </div>
+                        <div class="col-md-4">
+                            <label class="form-label small fw-bold">تاريخ البداية:</label>
+                            <input type="date" id="set_start" class="form-control" required>
+                        </div>
+                        <div class="col-md-4">
+                            <label class="form-label small fw-bold">تاريخ النهاية:</label>
+                            <input type="date" id="set_end" class="form-control" required>
+                        </div>
+                        <div class="col-12 mt-4 text-center">
+                            <button type="submit" id="btn-set" class="btn btn-primary px-5 py-2 fw-bold">حفظ المواعيد</button>
+                        </div>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Modal تفاصيل وإنجاز المخدوم -->
+<div class="modal fade" id="studentDetailModal" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog modal-lg modal-dialog-centered">
+        <div class="modal-content rounded-4 border-0 shadow">
+            <div class="modal-header bg-primary text-white rounded-top-4">
+                <h5 class="modal-title fw-bold" id="modalStudentName">تفاصيل المخدوم</h5>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body p-4" id="modalStudentBody">
+                <div class="text-center py-4"><i class="fa-solid fa-spinner fa-spin fa-2x text-primary"></i></div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
+<script>
+    if (localStorage.getItem('user_role') !== 'admin') window.location.href = 'login.html';
+
+    function showMessage(msg, isSuccess) {
+        const msgBox = document.getElementById('sys-msg');
+        msgBox.className = `alert fw-bold text-center alert-${isSuccess ? 'success' : 'danger'}`;
+        msgBox.textContent = msg;
+        msgBox.classList.remove('d-none');
+        window.scrollTo({ top: 0, behavior: 'smooth' });
+    }
+
+    // تنزيل ملف الإكسيل القياسي
+    function downloadStandardTemplate() {
+        const templateData = [
+            ["الاسم", "الكود", "تاريخ الميلاد"],
+            ["مينا عادل جورج", "1001", "2005-04-15"],
+            ["مارينا يوسف سمير", "1002", "2006-08-20"]
+        ];
+        const ws = XLSX.utils.aoa_to_sheet(templateData);
+        const wb = XLSX.utils.book_new();
+        XLSX.utils.book_append_sheet(wb, ws, "المخدومين");
+        XLSX.writeFile(wb, "قالب_المخدومين_القياسي.xlsx");
+    }
+
+    // 1. إضافة مخدوم فردي مع فحص التكرار
+    document.getElementById('single-student-form').addEventListener('submit', async function(e) {
+        e.preventDefault();
+        const btn = document.getElementById('btn-add-std');
+        btn.innerHTML = '<i class="fa-solid fa-spinner fa-spin"></i> جاري التحقق والحفظ...';
+        btn.disabled = true;
+
+        const payload = {
+            name: document.getElementById('std_name').value,
+            code: document.getElementById('std_code').value,
+            birthdate: document.getElementById('std_birthdate').value,
+            level: document.getElementById('std_level').value
+        };
+
+        try {
+            const response = await fetch('/api/admin', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ action: 'add_single_student', payload })
+            });
+            const result = await response.json();
+            showMessage(result.message, result.success);
+            if (result.success) {
+                document.getElementById('single-student-form').reset();
+            }
+        } catch (error) {
+            showMessage("حدث خطأ في الاتصال بالسيرفر", false);
+        }
+
+        btn.innerHTML = '<i class="fa-solid fa-floppy-disk me-1"></i> حفظ بيانات المخدوم';
+        btn.disabled = false;
+    });
+
+    // 2. استيراد ملف إكسيل
+    document.getElementById('import-form').addEventListener('submit', function(e) {
+        e.preventDefault();
+        const fileInput = document.getElementById('excel_file');
+        const level = document.getElementById('import_level').value;
+        const btn = document.getElementById('btn-import');
+
+        if (!fileInput.files.length) return;
+
+        btn.innerHTML = '<i class="fa-solid fa-spinner fa-spin"></i> جاري قراءة الملف...';
+        btn.disabled = true;
+
+        const reader = new FileReader();
+        reader.onload = async function(evt) {
+            try {
+                const data = new Uint8Array(evt.target.result);
+                const workbook = XLSX.read(data, { type: 'array' });
+                const sheet = workbook.Sheets[workbook.SheetNames[0]];
+                const rows = XLSX.utils.sheet_to_json(sheet, { header: 1 });
+
+                let students = [];
+                for (let i = 1; i < rows.length; i++) {
+                    const row = rows[i];
+                    if (row && row[0] && row[1]) {
+                        students.push({
+                            name: row[0],
+                            code: row[1],
+                            birthdate: row[2] ? String(row[2]) : ''
+                        });
+                    }
+                }
+
+                if (students.length === 0) {
+                    throw new Error("لم يتم العثور على بيانات صالحة في الملف");
+                }
+
+                btn.innerHTML = '<i class="fa-solid fa-spinner fa-spin"></i> جاري فحص الأكواد والحفظ...';
+
+                const response = await fetch('/api/admin', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        action: 'import_students',
+                        payload: { students, import_level: level }
+                    })
+                });
+
+                const result = await response.json();
+                showMessage(result.message, result.success);
+                document.getElementById('import-form').reset();
+            } catch (err) {
+                showMessage(err.message || "حدث خطأ أثناء معالجة الملف", false);
+            }
+            btn.innerHTML = '<i class="fa-solid fa-cloud-arrow-up me-1"></i> فحص وإدخال الملف';
+            btn.disabled = false;
+        };
+        reader.readAsArrayBuffer(fileInput.files[0]);
+    });
+
+    // 3. جلب جميع المخدومين في جدول المتابعة
+    async function loadAllStudents() {
+        const tbody = document.getElementById('studentsTableBody');
+        tbody.innerHTML = '<tr><td colspan="6" class="text-center py-4"><i class="fa-solid fa-spinner fa-spin me-1 text-primary"></i> جاري جلب البيانات...</td></tr>';
+
+        try {
+            const res = await fetch('/api/admin', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ action: 'get_all_students' })
+            });
+            const data = await res.json();
+
+            if (!data.success || !data.students.length) {
+                tbody.innerHTML = '<tr><td colspan="6" class="text-center text-muted py-4">لا يوجد مخدومين مسجلين بعد.</td></tr>';
+                return;
+            }
+
+            tbody.innerHTML = '';
+            data.students.forEach(std => {
+                const tr = document.createElement('tr');
+                tr.innerHTML = `
+                    <td class="fw-bold">${std.code}</td>
+                    <td>${std.name}</td>
+                    <td><span class="badge bg-light text-primary border">${std.level || 'الفرقة الأولى'}</span></td>
+                    <td>${std.birthdate || '-'}</td>
+                    <td><span class="badge bg-success">${std.points || 0}</span></td>
+                    <td class="text-center">
+                        <button class="btn btn-sm btn-outline-info fw-bold" onclick="viewStudentDetails('${std.code}')">
+                            <i class="fa-solid fa-eye me-1"></i> فحص الإنجاز
+                        </button>
+                    </td>
+                `;
+                tbody.appendChild(tr);
+            });
+        } catch (err) {
+            tbody.innerHTML = '<tr><td colspan="6" class="text-center text-danger py-4">فشل في تحميل قائمة المخدومين.</td></tr>';
+        }
+    }
+
+    // 4. فحص تفاصيل مخدوم محدد
+    let studentsModalInstance = null;
+    async function viewStudentDetails(code) {
+        if (!studentsModalInstance) {
+            studentsModalInstance = new bootstrap.Modal(document.getElementById('studentDetailModal'));
+        }
+        studentsModalInstance.show();
+
+        const modalBody = document.getElementById('modalStudentBody');
+        modalBody.innerHTML = '<div class="text-center py-4"><i class="fa-solid fa-spinner fa-spin fa-2x text-primary"></i><p class="mt-2 text-muted">جاري سحب تقارير المخدوم...</p></div>';
+
+        try {
+            const res = await fetch('/api/admin', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ action: 'get_student_details', payload: { code } })
+            });
+            const data = await res.json();
+
+            if (!data.success) throw new Error(data.message);
+
+            document.getElementById('modalStudentName').textContent = `${data.student.name} (كود: ${data.student.code})`;
+
+            modalBody.innerHTML = `
+                <div class="row g-3 mb-4">
+                    <div class="col-md-4">
+                        <div class="p-3 bg-light rounded-3 text-center border">
+                            <small class="text-muted d-block mb-1">النقاط الكلية</small>
+                            <h4 class="fw-bold text-success mb-0">${data.student.points || 0}</h4>
+                        </div>
+                    </div>
+                    <div class="col-md-4">
+                        <div class="p-3 bg-light rounded-3 text-center border">
+                            <small class="text-muted d-block mb-1">أيام قراءة الكتاب</small>
+                            <h4 class="fw-bold text-primary mb-0">${data.readingCount} يوم</h4>
+                        </div>
+                    </div>
+                    <div class="col-md-4">
+                        <div class="p-3 bg-light rounded-3 text-center border">
+                            <small class="text-muted d-block mb-1">سجلات النوتة الروحية</small>
+                            <h4 class="fw-bold text-danger mb-0">${data.notesCount} يوم</h4>
+                        </div>
+                    </div>
+                </div>
+
+                <h6 class="fw-bold text-dark border-bottom pb-2 mb-2"><i class="fa-solid fa-book-bible me-1 text-primary"></i> سجل قراءات الخطة</h6>
+                <div style="max-height: 160px; overflow-y: auto;" class="border rounded-3 p-2 bg-light mb-3">
+                    ${data.readingLogs.length ? data.readingLogs.map(r => `
+                        <div class="d-flex justify-content-between border-bottom py-1 small">
+                            <span>${r.reading_text || 'قراءة يومية'}</span>
+                            <span class="badge bg-success-subtle text-success">مكتمل (${r.plan_month}/${r.plan_day})</span>
+                        </div>
+                    `).join('') : '<div class="text-muted text-center py-2 small">لم يسجل أي قراءات بعد.</div>'}
+                </div>
+
+                <h6 class="fw-bold text-dark border-bottom pb-2 mb-2"><i class="fa-solid fa-heart-pulse me-1 text-danger"></i> وسائط النعمة (النوتة)</h6>
+                <div style="max-height: 160px; overflow-y: auto;" class="border rounded-3 p-2 bg-light">
+                    ${data.notes.length ? data.notes.map(n => `
+                        <div class="border-bottom py-1 small">
+                            <span class="fw-bold d-block text-secondary">التاريخ: ${n.date || n.id}</span>
+                            <span>الصلاة: <strong>${n.prayers || 0}</strong> | القداس: <strong>${n.liturgy ? 'نعم' : 'لا'}</strong> \vert{} الاعتراف: <strong>${n.confession ? 'نعم' : 'لا'}</strong></span>
+                        </div>
+                    `).join('') : '<div class="text-muted text-center py-2 small">لم يسجل أي نوتة بعد.</div>'}
+                </div>
+            `;
+        } catch (e) {
+            modalBody.innerHTML = `<div class="alert alert-danger text-center">تعذر جلب تفاصيل المخدوم: ${e.message}</div>`;
+        }
+    }
+
+    // 5. تحميل إحصائيات معدل الاستهلاك الحية (Usage Dashboard)
+    async function loadUsageStats() {
+        try {
+            const res = await fetch('/api/admin', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ action: 'get_usage_stats' })
+            });
+            const data = await res.json();
+            if (!data.success) return;
+
+            const s = data.stats;
+            document.getElementById('stat-students').textContent = s.totalStudents;
+            document.getElementById('stat-subjects').textContent = s.totalSubjects;
+            document.getElementById('stat-readings').textContent = s.totalReadings;
+            document.getElementById('stat-notes').textContent = s.totalNotes;
+            document.getElementById('stat-total-docs').textContent = `${s.totalDocs} وثيقة`;
+            document.getElementById('stat-storage').textContent = `${s.estimatedStorageKB} KB من أصل 1 GB`;
+
+            // تحديث عرض شريط نسبة الاستهلاك
+            const pct = Math.min(100, Math.max(1, (s.totalDocs / 1000) * 100));
+            document.getElementById('bar-docs').style.width = `${pct}%`;
+        } catch (err) {
+            console.error('فشل في جلب إحصائيات الاستهلاك:', err);
+        }
+    }
+
+    // 6. إضافة مقرر
+    document.getElementById('subject-form').addEventListener('submit', async function(e) {
+        e.preventDefault();
+        const btn = document.getElementById('btn-add-sub');
+        btn.disabled = true;
+
+        const payload = {
+            level: document.getElementById('sub_level').value,
+            title: document.getElementById('sub_title').value,
+            sheet_url: document.getElementById('sub_sheet').value,
+            attachment_file: document.getElementById('sub_attach').value
+        };
+
+        const res = await fetch('/api/admin', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ action: 'add_subject', payload })
+        });
+        const data = await res.json();
+        showMessage(data.message, data.success);
+        if (data.success) document.getElementById('subject-form').reset();
+        btn.disabled = false;
+    });
+
+    // 7. حفظ الإعدادات
+    document.getElementById('settings-form').addEventListener('submit', async function(e) {
+        e.preventDefault();
+        const btn = document.getElementById('btn-set');
+        btn.disabled = true;
+
+        const payload = {
+            service_year_name: document.getElementById('set_name').value,
+            start_date: document.getElementById('set_start').value,
+            end_date: document.getElementById('set_end').value
+        };
+
+        const res = await fetch('/api/admin', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ action: 'save_settings', payload })
+        });
+        const data = await res.json();
+        showMessage(data.message, data.success);
+        btn.disabled = false;
+    });
+</script>
+</body>
+</html>
+ 

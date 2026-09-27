@@ -1,7 +1,6 @@
 {
-  "name": "church-service-app",
+  "name": "church-service",
   "version": "1.0.0",
-  "description": "Church Service Backend",
   "dependencies": {
     "firebase-admin": "^11.11.0"
   }

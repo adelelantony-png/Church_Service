@@ -36,16 +36,13 @@
         .status-indicator-dot { width: 8px; height: 8px; border-radius: 50%; }
         .dot-online { background-color: #22c55e; box-shadow: 0 0 6px #22c55e; }
         .dot-offline { background-color: #ef4444; }
-
-        .birthday-banner { background: linear-gradient(135deg, #fffbeb 0%, #fef3c7 100%); border: 2px dashed #f59e0b; color: #92400e; border-radius: 18px; padding: 16px; animation: pulse-border 2s infinite; }
-        @keyframes pulse-border { 0% { box-shadow: 0 0 0 0 rgba(245, 158, 11, 0.4); } 70% { box-shadow: 0 0 0 10px rgba(245, 158, 11, 0); } 100% { box-shadow: 0 0 0 0 rgba(245, 158, 11, 0); } }
     </style>
 </head>
 <body>
 
 <div class="main-card pb-5">
 
-    <!-- شريط الحالة + زر التحديث النووي -->
+    <!-- شريط الحالة + زر التحديث -->
     <div class="d-flex justify-content-between align-items-center mb-3 px-1">
         <div id="connectionStatus" class="network-status-badge status-online">
             <span class="status-indicator-dot dot-online" id="statusDot"></span>
@@ -59,7 +56,6 @@
         </div>
     </div>
 
-    <div id="birthdayContainer"></div>
     <div id="alertsContainer"></div>
 
     <!-- كارت بيانات المخدوم -->
@@ -122,11 +118,7 @@
 </div>
 
 <script>
-    // ==========================================
-    // 1. نظام اصطياد الأخطاء المتقدم (Error Catcher)
-    // ==========================================
-    
-    // تسجيل الأخطاء العامة غير المتوقعة في المتصفح
+    // نظام اصطياد الأخطاء
     window.onerror = function(message, source, lineno, colno, error) {
         showErrorToCopy(`[Browser Error]: ${message} at ${source}:${lineno}`);
         return true; 
@@ -136,19 +128,16 @@
         showErrorToCopy(`[Promise Error]: ${event.reason}`);
     });
 
-    // دالة عرض الخطأ مع زر النسخ
     function showErrorToCopy(errorDetails) {
         const container = document.getElementById('alertsContainer');
         const alertDiv = document.createElement('div');
         alertDiv.className = 'alert alert-danger alert-dismissible fade show fw-bold shadow-sm rounded-4 mb-3 border-danger';
-        
-        // استبدال المسافات وتنسيق النص ليكون سهل القراءة والنسخ
         const safeText = String(errorDetails).replace(/</g, "&lt;").replace(/>/g, "&gt;");
         
         alertDiv.innerHTML = `
             <div class="d-flex flex-column">
-                <div class="mb-2 text-dark"><i class="fa-solid fa-triangle-exclamation text-danger me-2"></i> حدث خطأ تقني غير متوقع!</div>
-                <div class="bg-white text-danger p-2 rounded mb-2 border" style="font-size: 0.8rem; overflow-x: auto; white-space: pre-wrap; direction: ltr; text-align: left;" id="err-text-${Date.now()}">${safeText}</div>
+                <div class="mb-2 text-dark"><i class="fa-solid fa-triangle-exclamation text-danger me-2"></i> حدث خطأ تقني!</div>
+                <div class="bg-white text-danger p-2 rounded mb-2 border" style="font-size: 0.8rem; overflow-x: auto; white-space: pre-wrap; direction: ltr; text-align: left;">${safeText}</div>
                 <button type="button" class="btn btn-sm btn-dark align-self-start" onclick="copyErrorText(this)">
                     <i class="fa-solid fa-copy me-1"></i> نسخ تفاصيل الخطأ
                 </button>
@@ -159,62 +148,39 @@
         window.scrollTo({ top: 0, behavior: 'smooth' });
     }
 
-    // دالة تنفيذ النسخ للحافظة
     function copyErrorText(btnElem) {
         const textToCopy = btnElem.previousElementSibling.innerText;
         navigator.clipboard.writeText(textToCopy).then(() => {
-            const originalHTML = btnElem.innerHTML;
             btnElem.innerHTML = '<i class="fa-solid fa-check me-1"></i> تم النسخ بنجاح';
-            btnElem.classList.replace('btn-dark', 'btn-success');
-            setTimeout(() => {
-                btnElem.innerHTML = originalHTML;
-                btnElem.classList.replace('btn-success', 'btn-dark');
-            }, 2500);
-        }).catch(err => {
-            alert('تعذر النسخ التلقائي، يرجى تحديد النص ونسخه يدوياً.');
+            setTimeout(() => { btnElem.innerHTML = '<i class="fa-solid fa-copy me-1"></i> نسخ تفاصيل الخطأ'; }, 2500);
         });
     }
 
-    // ==========================================
-    // 2. زر التحديث "النووي" لمسح جميع أنواع الكاش
-    // ==========================================
+    // زر التحديث الشامل
     async function forceAppUpdate() {
         const btn = document.getElementById('btnCheckUpdate');
         btn.innerHTML = '<i class="fa-solid fa-spinner fa-spin"></i> جاري المسح...';
         btn.disabled = true;
 
         try {
-            // أ. تفريغ ذاكرة الكاش (Cache Storage)
             if ('caches' in window) {
                 const cacheNames = await caches.keys();
                 await Promise.all(cacheNames.map(name => caches.delete(name)));
             }
-            
-            // ب. إلغاء تسجيل Service Workers
             if ('serviceWorker' in navigator) {
                 const registrations = await navigator.serviceWorker.getRegistrations();
-                for (let registration of registrations) {
-                    await registration.unregister();
-                }
+                for (let registration of registrations) { await registration.unregister(); }
             }
-            
-            showToast('تم مسح الذاكرة المؤقتة بالكامل! جاري إعادة تشغيل التطبيق...', 'success');
-            
-            // ج. إعادة تحميل الصفحة برابط جديد إجبارياً لمنع كاش المتصفح
+            showToast('تم مسح الذاكرة المؤقتة بنجاح!', 'success');
             setTimeout(() => {
                 window.location.href = window.location.pathname + '?v=' + new Date().getTime();
-            }, 1500);
-
+            }, 1000);
         } catch (e) {
             showErrorToCopy("[Update Error]: " + e.message);
             btn.innerHTML = '<i class="fa-solid fa-rotate-right me-1"></i> فشل، حاول مجدداً';
             btn.disabled = false;
         }
     }
-
-    // ==========================================
-    // 3. الوظائف الأساسية للشاشة
-    // ==========================================
 
     function showToast(message, type = 'primary') {
         const container = document.getElementById('alertsContainer');
@@ -232,7 +198,7 @@
             statusBox.innerHTML = '<span class="status-indicator-dot dot-online"></span> متصل بالإنترنت';
         } else {
             statusBox.className = 'network-status-badge status-offline';
-            statusBox.innerHTML = '<span class="status-indicator-dot dot-offline"></span> وضع عدم الاتصال (أوفلاين)';
+            statusBox.innerHTML = '<span class="status-indicator-dot dot-offline"></span> وضع عدم الاتصال';
         }
     }
     window.addEventListener('online', updateNetworkStatus);
@@ -262,6 +228,7 @@
         loadBiblePlan();
     });
 
+    // ضبط التاريخ بدقة (الشهر الحالي واليوم الحالي)
     const todayObj = new Date();
     let selectedMonth = todayObj.getMonth() + 1;
     let selectedDay = todayObj.getDate();
@@ -269,7 +236,6 @@
 
     async function loadBiblePlan() {
         try {
-            // إضافة طابع زمني لضمان جلب أحدث خطة
             const planResponse = await fetch('bible_plan.json?t=' + new Date().getTime());
             const biblePlan = await planResponse.json();
             const planKey = `${selectedMonth}-${selectedDay}`;
@@ -284,13 +250,10 @@
                 document.getElementById('currentReadingText').textContent = currentReading;
             }
         } catch (error) {
-            console.warn("لم يتم العثور على خطة الكتاب المقدس، تفعيل القراءة الحرة.");
+            console.warn("تعذر تحميل خطة الكتاب المقدس.");
         }
     }
 
-    // ==========================================
-    // 4. دالة تسجيل القراءة (مجهزة بصائد الأخطاء)
-    // ==========================================
     async function submitCurrentDayReading() {
         const btn = document.getElementById('btnMarkDone');
         const originalHtml = btn.innerHTML;
@@ -321,19 +284,16 @@
             try {
                 result = JSON.parse(textResponse);
             } catch (parseError) {
-                // إذا أرسل Vercel صفحة HTML (مثل خطأ 404 أو 500)، سيتم اصطيادها وعرضها ككود
-                throw new Error(`[Server Crash / Parse Error]: \nStatus: ${response.status}\nResponse: ${textResponse.substring(0, 500)}...`);
+                throw new Error(`[Server Crash / Parse Error]: \nStatus: ${response.status}\nResponse: ${textResponse.substring(0, 300)}...`);
             }
 
             if (result.success) {
                 markDoneUI(result.points);
                 showToast(result.message, 'success');
             } else {
-                // عرض خطأ الواجهة بشكل عادي إذا كان الخطأ متوقعاً
                 throw new Error(`[API Logical Error]: ${result.message}`);
             }
         } catch (error) {
-            // توجيه الخطأ لصائد الأخطاء الجديد
             showErrorToCopy(error.message);
             btn.innerHTML = originalHtml;
             btn.disabled = false;
